@@ -1,38 +1,5 @@
 var timeFormat = 'MM/DD/YYYY HH:mm';
 
-
-function newDate(days) {
-    var hour = Math.round(24*Math.random())
-    var minute = Math.round(60*Math.random())
-    var date = moment().add(days, 'd').add(minute, 'm').add(hour, 'h').toDate();
-
-    return date
-}
-
-function newDateString(days) {
-    return moment().add(days, 'd').format(timeFormat);
-}
-
-var tdata = [{
-    x: newDateString(0),
-    y: randomScalingFactor()
-}, {
-    x: newDateString(2),
-    y: randomScalingFactor()
-}, {
-    x: newDateString(3),
-    y: randomScalingFactor()
-}, {
-    x: newDateString(4),
-    y: randomScalingFactor()
-}, {
-    x: newDateString(6),
-    y: randomScalingFactor()
-}, {
-    x: newDateString(9),
-    y: randomScalingFactor()
-}];
-
 var color = Chart.helpers.color;
 var config = {
     type: 'line',
@@ -42,7 +9,7 @@ var config = {
             backgroundColor: color(window.chartColors.green).alpha(0.5).rgbString(),
             borderColor: window.chartColors.green,
             fill: false,
-            data: tdata
+            data: []
         }]
     },
     options: {
@@ -53,8 +20,12 @@ var config = {
             xAxes: [{
                 type: 'time',
                 time: {
+                    displayFormats: {
+                        'hour': 'H:mm'
+                    },
                     parser: timeFormat,
-                    // round: 'day'
+                    //round: 'hour',
+                    //unit: 'day',
                     tooltipFormat: 'll HH:mm'
                 },
                 scaleLabel: {
@@ -71,6 +42,104 @@ var config = {
         },
     }
 };
+
+// Stored query ids.
+var STORED_QUERY_OBSERVATION = "fmi::observations::weather::multipointcoverage";
+var STORED_QUERY_FORECAST = "fmi::forecast::hirlam::surface::point::multipointcoverage";
+
+// URL for test server.
+var TEST_SERVER_URL = "http://opendata.fmi.fi/wfs";
+if (TEST_SERVER_URL.indexOf("insert-your-apikey-here") !== -1) {
+    alert("Check parser.html source! TEST_SERVER_URL should contain proper API-key!");
+}
+
+Metolib.WfsRequestParser = new Metolib.WfsRequestParser();
+
+
+/**
+ * This function recursively browses the given {data} structure and appends the content as text
+ * to the {container} element.
+ *
+ * @param {Element} container Content is appended as a text here.
+ * @param {Object|Array|String|etc} data Content that is browsed through recursively.
+ * @param {String} indentStr Indentation string of the previous recursion level.
+ */
+function recursiveBrowse(container, data, indentStr) {
+    if (_.isArray(data) || _.isObject(data)) {
+        // Browse all the child items of the array or object.
+        indentStr += ">";
+        _.each(data, function(value, key) {
+            container.append("<br>" + indentStr + " [" + key + "]");
+            recursiveBrowse(container, value, indentStr);
+        });
+
+    } else {
+        // This is a leaf. So, just append it after its container array or object.
+        container.append(" > " + data);
+    }
+}
+
+/**
+ * Handle parser results in this callback function.
+ *
+ * Append result strings to the UI.
+ *
+ * @param {Object} data Parsed data.
+ * @param {Object} errors Parser errors.
+ * @param {String} test case name.
+ */
+function handleCallback(data, errors) {
+    let tvdata = [];
+    for (const tv of data.locations[0].data.td.timeValuePairs) {
+        tvdata.push({x: tv.time, y: tv.value})
+    }
+    config.data.datasets[0].data = tvdata;
+
+
+    var ctx = document.getElementById('canvas').getContext('2d');
+    window.myLine = new Chart(ctx, config);
+
+    var results = jQuery("#results");
+    //results.append("<h2>" + caseName + "</h2>");
+    if (data) {
+        results.append("<h3>Data object</h3>");
+        recursiveBrowse(results, data, "");
+    }
+    if (errors) {
+        results.append("<h3>Errors object</h3>");
+        recursiveBrowse(results, errors, "");
+    }
+}
+
+function getWeatherData(url) {
+    // See API documentation and comments from parser source code of
+    // Metolib.WfsRequestParser.getData function for the description
+    // of function options parameter object and for the callback parameters objects structures.
+    Metolib.WfsRequestParser.getData({
+        url : url,
+        storedQueryId : STORED_QUERY_OBSERVATION,
+        requestParameter : "td,ws_10min",
+        // Integer values are used to init dates for older browsers.
+        // (new Date("2013-05-10T08:00:00Z")).getTime()
+        // (new Date("2013-05-12T10:00:00Z")).getTime()
+        begin : (new Date("2013-05-10T08:00:00Z")).getTime(),
+        end : (new Date("2013-05-12T10:00:00Z")).getTime(),
+        timestep : 60 * 60 * 1000,
+        sites : ["Kaisaniemi,Helsinki"],
+        callback : function(data, errors) {
+            // Handle the data and errors object in a way you choose.
+            // Here, we delegate the content for a separate handler function.
+            // See parser documentation from source code comments for more details.
+            handleCallback(data, errors);
+        }
+    });
+}
+
+
+
+jQuery(function() {
+    getWeatherData(TEST_SERVER_URL);
+});
 
 
 /*
