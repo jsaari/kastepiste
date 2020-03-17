@@ -10,6 +10,13 @@ var config = {
             borderColor: window.chartColors.green,
             fill: false,
             data: []
+        },
+        {
+            label: 'Lämpötila',
+            backgroundColor: color(window.chartColors.red).alpha(0.5).rgbString(),
+            borderColor: window.chartColors.red,
+            fill: false,
+            data: []
         }]
     },
     options: {
@@ -89,11 +96,16 @@ function recursiveBrowse(container, data, indentStr) {
  * @param {String} test case name.
  */
 function handleCallback(data, errors) {
-    let tvdata = [];
+    let tvdata = []; //dew point
     for (const tv of data.locations[0].data.td.timeValuePairs) {
-        tvdata.push({x: tv.time, y: tv.value})
+        tvdata.push({x: tv.time, y: tv.value});
+    }
+    let tdata = []; //temperature
+    for (const tv of data.locations[0].data.temperature.timeValuePairs) {
+        tdata.push({x: tv.time, y: tv.value});
     }
     config.data.datasets[0].data = tvdata;
+    config.data.datasets[1].data = tdata;
 
 
     var ctx = document.getElementById('canvas').getContext('2d');
@@ -118,14 +130,14 @@ function getWeatherData(url) {
     Metolib.WfsRequestParser.getData({
         url : url,
         storedQueryId : STORED_QUERY_OBSERVATION,
-        requestParameter : "td,ws_10min",
+        requestParameter : "td,temperature",
         // Integer values are used to init dates for older browsers.
         // (new Date("2013-05-10T08:00:00Z")).getTime()
         // (new Date("2013-05-12T10:00:00Z")).getTime()
-        begin : (new Date("2013-05-10T08:00:00Z")).getTime(),
-        end : (new Date("2013-05-12T10:00:00Z")).getTime(),
+        begin : (new Date("2018-07-22T08:00:00Z")).getTime(),
+        end : (new Date("2018-07-29T00:00:00Z")).getTime(),
         timestep : 60 * 60 * 1000,
-        sites : ["Kaisaniemi,Helsinki"],
+        sites : ["Oulunsalo"],
         callback : function(data, errors) {
             // Handle the data and errors object in a way you choose.
             // Here, we delegate the content for a separate handler function.
