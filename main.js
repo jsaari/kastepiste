@@ -1,20 +1,22 @@
 var timeFormat = 'MM/DD/YYYY HH:mm';
 
+var WEEK = 1000*60*60*24*7;
 var color = Chart.helpers.color;
-var config = {
+var chartConfig = {
     type: 'line',
     data: {
-        datasets: [{
-            label: 'Kastepiste',
-            backgroundColor: color(window.chartColors.green).alpha(0.5).rgbString(),
-            borderColor: window.chartColors.green,
-            fill: false,
-            data: []
-        },
+        datasets: [
         {
             label: 'Lämpötila',
             backgroundColor: color(window.chartColors.red).alpha(0.5).rgbString(),
             borderColor: window.chartColors.red,
+            fill: false,
+            data: []
+        },
+        {
+            label: 'Kastepiste',
+            backgroundColor: color(window.chartColors.green).alpha(0.5).rgbString(),
+            borderColor: window.chartColors.green,
             fill: false,
             data: []
         }]
@@ -22,6 +24,10 @@ var config = {
     options: {
         title: {
             text: 'Chart.js Time Scale'
+        },
+        tooltips:  {
+            mode: 'index',
+            intersect: false
         },
         scales: {
             xAxes: [{
@@ -49,6 +55,8 @@ var config = {
         },
     }
 };
+
+var weatherConfig = {};
 
 // Stored query ids.
 var STORED_QUERY_OBSERVATION = "fmi::observations::weather::multipointcoverage";
@@ -96,20 +104,53 @@ function recursiveBrowse(container, data, indentStr) {
  * @param {String} test case name.
  */
 function handleCallback(data, errors) {
-    let tvdata = []; //dew point
-    for (const tv of data.locations[0].data.td.timeValuePairs) {
-        tvdata.push({x: tv.time, y: tv.value});
+    console.log("handleCallback");
+    if (errors.length == 0) {
+        let dew_data = []; //dew point
+        for (const tv of data.locations[0].data.td.timeValuePairs) {
+            dew_data.push({x: tv.time, y: tv.value});
+        }
+        let tdata = []; //temperature
+        for (const tv of data.locations[0].data.temperature.timeValuePairs) {
+            tdata.push({x: tv.time, y: tv.value});
+        }
+
+        if (window.chart) {
+            let chart = window.chart;
+            let ntdata = chart.data.datasets[0].data.concat(tdata);
+            let ndew_data = chart.data.datasets[1].data.concat(dew_data);
+
+            window.chart.data.datasets[0].data = ntdata;
+            window.chart.data.datasets[1].data = ndew_data;
+
+            window.chart.update();
+        } else {
+            chartConfig.data.datasets[0].data = tdata;
+            chartConfig.data.datasets[1].data = dew_data;
+            let ctx = document.getElementById('canvas').getContext('2d');
+            window.chart = new Chart(ctx, chartConfig);
+        }
+    } else {
+        console.log("TODO: handle callback error");
     }
-    let tdata = []; //temperature
-    for (const tv of data.locations[0].data.temperature.timeValuePairs) {
-        tdata.push({x: tv.time, y: tv.value});
-    }
-    config.data.datasets[0].data = tvdata;
-    config.data.datasets[1].data = tdata;
 
 
-    var ctx = document.getElementById('canvas').getContext('2d');
-    window.myLine = new Chart(ctx, config);
+    let newBegin = weatherConfig.begin;
+    newBegin += WEEK;
+
+    if (weatherConfig.totalEnd - newBegin > WEEK) {
+        weatherConfig.begin = newBegin;
+        weatherConfig.end = newBegin + WEEK;
+
+        window.setTimeout(getWeatherData(TEST_SERVER_URL, weatherConfig));
+    } else if (weatherConfig.totalEnd - newBegin > 0) {
+        weatherConfig.begin = newBegin;
+        weatherConfig.end = weatherConfig.totalEnd;
+
+        window.setTimeout(getWeatherData(TEST_SERVER_URL, weatherConfig));
+    } else {
+        //we finished last section
+    }
 
     var results = jQuery("#results");
     //results.append("<h2>" + caseName + "</h2>");
@@ -123,7 +164,7 @@ function handleCallback(data, errors) {
     }
 }
 
-function getWeatherData(url) {
+function getWeatherData(url, wconfig) {
     // See API documentation and comments from parser source code of
     // Metolib.WfsRequestParser.getData function for the description
     // of function options parameter object and for the callback parameters objects structures.
@@ -134,10 +175,10 @@ function getWeatherData(url) {
         // Integer values are used to init dates for older browsers.
         // (new Date("2013-05-10T08:00:00Z")).getTime()
         // (new Date("2013-05-12T10:00:00Z")).getTime()
-        begin : (new Date("2018-07-22T08:00:00Z")).getTime(),
-        end : (new Date("2018-07-29T00:00:00Z")).getTime(),
+        begin : wconfig.begin,
+        end : wconfig.end,
         timestep : 60 * 60 * 1000,
-        sites : ["Oulunsalo"],
+        sites : [wconfig.location],
         callback : function(data, errors) {
             // Handle the data and errors object in a way you choose.
             // Here, we delegate the content for a separate handler function.
@@ -147,65 +188,40 @@ function getWeatherData(url) {
     });
 }
 
+function clearChart() {
+    let chart = window.chart;
+    if (chart) {
+        chart.data.datasets.forEach((dataset) => {
+            dataset.data = [];
+        });
+        chart.update();
+    }
+}
 
+function getDataHandler() {
+    console.log("getDataHandler");
 
-jQuery(function() {
-    getWeatherData(TEST_SERVER_URL);
-});
+    let location = document.querySelector("#location").value;
 
+    let sd = document.querySelector("#startDate").value;
+    let ed = document.querySelector("#endDate").value;
 
-/*
-var colorNames = Object.keys(window.chartColors);
-document.getElementById('addDataset').addEventListener('click', function () {
-    var colorName = colorNames[config.data.datasets.length % colorNames.length];
-    var newColor = window.chartColors[colorName];
-    var newDataset = {
-        label: 'Dataset ' + config.data.datasets.length,
-        borderColor: newColor,
-        backgroundColor: color(newColor).alpha(0.5).rgbString(),
-        data: [],
-    };
+    let start = (new Date(sd)).getTime();
+    let end = (new Date(ed)).getTime();
 
-    for (var index = 0; index < config.data.labels.length; ++index) {
-        newDataset.data.push(randomScalingFactor());
+    weatherConfig.location = location;
+    weatherConfig.begin = start;
+    weatherConfig.totalEnd = end;
+    if (end - start > WEEK) {
+        weatherConfig.end = start + WEEK;
+    } else {
+        weatherConfig.end = end;
     }
 
-    config.data.datasets.push(newDataset);
-    window.myLine.update();
-});
+    clearChart();
+    getWeatherData(TEST_SERVER_URL, weatherConfig);
+}
 
-document.getElementById('addData').addEventListener('click', function () {
-    if (config.data.datasets.length > 0) {
-        config.data.labels.push(newDate(config.data.labels.length));
-
-        for (var index = 0; index < config.data.datasets.length; ++index) {
-            if (typeof config.data.datasets[index].data[0] === 'object') {
-                config.data.datasets[index].data.push({
-                    x: newDate(config.data.datasets[index].data.length),
-                    y: randomScalingFactor(),
-                });
-            } else {
-                config.data.datasets[index].data.push(randomScalingFactor());
-            }
-        }
-
-        window.myLine.update();
-    }
-});
-
-document.getElementById('removeDataset').addEventListener('click', function () {
-    config.data.datasets.splice(0, 1);
-    window.myLine.update();
-});
-
-document.getElementById('removeData').addEventListener('click', function () {
-    config.data.labels.splice(-1, 1); // remove the label first
-
-    config.data.datasets.forEach(function (dataset) {
-        dataset.data.pop();
-    });
-
-    window.myLine.update();
-});
-
-*/
+window.onload = function() {
+    document.querySelector("#getData").addEventListener("click", this.getDataHandler);
+}

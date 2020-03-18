@@ -20,6 +20,21 @@
         </script>
     </head>
     <body>
+        <label for="startDate">Alku päivämäärä:</label>
+        <input type="date" id="startDate" name="trip-start"
+            value="2018-06-01"
+            min="1950-01-01" max="2020-12-31">
+        <br>
+        <label for="endDate">Loppu päivämäärä:</label>
+        <input type="date" id="endDate" name="trip-end"
+            value="2018-06-30"
+            min="1950-01-01" max="2020-12-31">
+        <br>
+        <label for="location">Paikka:</label>
+        <input type="text" id="location" value="Oulunsalo">
+        <br>
+        <input type="button" id="getData" value="Hae tiedot">
+
         <div style="width:75%;">
             <canvas id="canvas"></canvas>
         </div>
