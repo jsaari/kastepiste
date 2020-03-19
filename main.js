@@ -10,14 +10,18 @@ var chartConfig = {
             label: 'Lämpötila',
             backgroundColor: color(window.chartColors.red).alpha(0.5).rgbString(),
             borderColor: window.chartColors.red,
+            borderWidth: 1,
             fill: false,
+            pointRadius: 1,
             data: []
         },
         {
             label: 'Kastepiste',
             backgroundColor: color(window.chartColors.green).alpha(0.5).rgbString(),
             borderColor: window.chartColors.green,
+            borderWidth: 1,
             fill: false,
+            pointRadius: 1,
             data: []
         }]
     },
