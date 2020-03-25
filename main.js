@@ -68,35 +68,8 @@ var STORED_QUERY_FORECAST = "fmi::forecast::hirlam::surface::point::multipointco
 
 // URL for test server.
 var TEST_SERVER_URL = "http://opendata.fmi.fi/wfs";
-if (TEST_SERVER_URL.indexOf("insert-your-apikey-here") !== -1) {
-    alert("Check parser.html source! TEST_SERVER_URL should contain proper API-key!");
-}
 
 Metolib.WfsRequestParser = new Metolib.WfsRequestParser();
-
-
-/**
- * This function recursively browses the given {data} structure and appends the content as text
- * to the {container} element.
- *
- * @param {Element} container Content is appended as a text here.
- * @param {Object|Array|String|etc} data Content that is browsed through recursively.
- * @param {String} indentStr Indentation string of the previous recursion level.
- */
-function recursiveBrowse(container, data, indentStr) {
-    if (_.isArray(data) || _.isObject(data)) {
-        // Browse all the child items of the array or object.
-        indentStr += ">";
-        _.each(data, function(value, key) {
-            container.append("<br>" + indentStr + " [" + key + "]");
-            recursiveBrowse(container, value, indentStr);
-        });
-
-    } else {
-        // This is a leaf. So, just append it after its container array or object.
-        container.append(" > " + data);
-    }
-}
 
 /**
  * Handle parser results in this callback function.
@@ -154,17 +127,6 @@ function handleCallback(data, errors) {
         window.setTimeout(getWeatherData(TEST_SERVER_URL, weatherConfig));
     } else {
         //we finished last section
-    }
-
-    var results = jQuery("#results");
-    //results.append("<h2>" + caseName + "</h2>");
-    if (data) {
-        results.append("<h3>Data object</h3>");
-        recursiveBrowse(results, data, "");
-    }
-    if (errors) {
-        results.append("<h3>Errors object</h3>");
-        recursiveBrowse(results, errors, "");
     }
 }
 
