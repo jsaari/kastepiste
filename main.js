@@ -67,7 +67,7 @@ var STORED_QUERY_OBSERVATION = "fmi::observations::weather::multipointcoverage";
 var STORED_QUERY_FORECAST = "fmi::forecast::hirlam::surface::point::multipointcoverage";
 
 // URL for test server.
-var TEST_SERVER_URL = "http://opendata.fmi.fi/wfs";
+var TEST_SERVER_URL = "https://opendata.fmi.fi/wfs";
 
 Metolib.WfsRequestParser = new Metolib.WfsRequestParser();
 
